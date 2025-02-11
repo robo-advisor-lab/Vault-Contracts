@@ -9,13 +9,18 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.3/contr
 /**
  * @title WETH ERC-4626 Vault
  * @dev This contract allows users to deposit WETH, mint proportional fund shares,
- *      and send WETH to a designated fund portfolio.
+ *      and send WETH to a designated fund portfolio while relying on an external
+ *      portfolio value update for tracking share value.
  */
 contract WETHVault is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable weth;
     address public immutable fundPortfolio;
+    mapping(address => bool) public admins; // Admins who can update portfolio value
+    uint256 public portfolioValue; // Total fund value tracked externally
+
+    event WithdrawalRequest(address indexed user, uint256 amount);
 
     constructor(
         address _weth,
@@ -28,6 +33,16 @@ contract WETHVault is ERC20, ReentrancyGuard {
         
         weth = IERC20(_weth);
         fundPortfolio = _fundPortfolio;
+        admins[msg.sender] = true; // Contract deployer is an admin by default
+    }
+
+    /**
+     * @dev Allows an admin to update the total portfolio value (tracked externally).
+     */
+    function setPortfolioValue(uint256 _newValue) external {
+        require(admins[msg.sender], "Not an admin");
+        require(_newValue > 0, "Portfolio value must be positive");
+        portfolioValue = _newValue;
     }
 
     /**
@@ -40,31 +55,46 @@ contract WETHVault is ERC20, ReentrancyGuard {
         // Transfer WETH from user to this contract
         weth.safeTransferFrom(msg.sender, address(this), amount);
         
-        // Mint proportional shares
-        uint256 shares = _convertToShares(amount);
-        _mint(msg.sender, shares);
-        
-        // Forward WETH to fund portfolio (user pays gas)
+        // Forward WETH to fund portfolio (EOA account)
         weth.safeTransfer(fundPortfolio, amount);
+        
+        // Calculate shares to mint based on total portfolio value
+        uint256 supply = totalSupply();
+        uint256 shares = (supply == 0 || portfolioValue == 0) ? amount : (amount * supply) / portfolioValue;
+        
+        _mint(msg.sender, shares);
     }
 
     /**
-     * @dev Calculate the equivalent amount of shares for a given amount of WETH.
-     * @param assets The amount of WETH being deposited.
-     * @return shares The calculated shares.
+     * @dev Withdraw WETH by burning vault shares.
+     * @param shares The number of vault shares to redeem.
      */
-    function _convertToShares(uint256 assets) internal view returns (uint256) {
-        uint256 supply = totalSupply(); // Total shares supply
-        uint256 totalAssets = weth.balanceOf(address(this)); // Total underlying assets
+    function withdraw(uint256 shares) external nonReentrant {
+        require(shares > 0, "Shares must be greater than zero");
+        require(balanceOf(msg.sender) >= shares, "Insufficient shares");
 
-        return (supply == 0 || totalAssets == 0) ? assets : (assets * supply) / totalAssets;
+        uint256 supply = totalSupply();
+        uint256 amount = (shares * portfolioValue) / supply; // Compute WETH equivalent
+
+        _burn(msg.sender, shares);
+
+        // Admin or bot must send WETH manually from fund portfolio (EOA) to user
+        emit WithdrawalRequest(msg.sender, amount);
     }
 
     /**
-     * @dev Returns the value of a single share in terms of WETH.
+     * @dev Returns the value of a single share based on fundPortfolio's total valuation.
      */
     function pricePerShare() external view returns (uint256) {
         uint256 supply = totalSupply();
-        return supply == 0 ? 1e18 : (weth.balanceOf(address(this)) * 1e18) / supply;
+        return supply == 0 ? 1e18 : (portfolioValue * 1e18) / supply;
+    }
+
+    /**
+     * @dev Adds or removes admin privileges.
+     */
+    function setAdmin(address admin, bool status) external {
+        require(admins[msg.sender], "Not an admin");
+        admins[admin] = status;
     }
 }

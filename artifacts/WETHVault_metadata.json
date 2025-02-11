@@ -82,6 +82,44 @@
 				"type": "event"
 			},
 			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "WithdrawalRequest",
+				"type": "event"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "admins",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "address",
@@ -250,6 +288,19 @@
 			},
 			{
 				"inputs": [],
+				"name": "portfolioValue",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
 				"name": "pricePerShare",
 				"outputs": [
 					{
@@ -259,6 +310,37 @@
 					}
 				],
 				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "admin",
+						"type": "address"
+					},
+					{
+						"internalType": "bool",
+						"name": "status",
+						"type": "bool"
+					}
+				],
+				"name": "setAdmin",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_newValue",
+						"type": "uint256"
+					}
+				],
+				"name": "setPortfolioValue",
+				"outputs": [],
+				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
@@ -352,10 +434,23 @@
 				],
 				"stateMutability": "view",
 				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "shares",
+						"type": "uint256"
+					}
+				],
+				"name": "withdraw",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
 			}
 		],
 		"devdoc": {
-			"details": "This contract allows users to deposit WETH, mint proportional fund shares,      and send WETH to a designated fund portfolio.",
+			"details": "This contract allows users to deposit WETH, mint proportional fund shares,      and send WETH to a designated fund portfolio while relying on an external      portfolio value update for tracking share value.",
 			"events": {
 				"Approval(address,address,uint256)": {
 					"details": "Emitted when the allowance of a `spender` for an `owner` is set by a call to {approve}. `value` is the new allowance."
@@ -394,7 +489,13 @@
 					"details": "Returns the name of the token."
 				},
 				"pricePerShare()": {
-					"details": "Returns the value of a single share in terms of WETH."
+					"details": "Returns the value of a single share based on fundPortfolio's total valuation."
+				},
+				"setAdmin(address,bool)": {
+					"details": "Adds or removes admin privileges."
+				},
+				"setPortfolioValue(uint256)": {
+					"details": "Allows an admin to update the total portfolio value (tracked externally)."
 				},
 				"symbol()": {
 					"details": "Returns the symbol of the token, usually a shorter version of the name."
@@ -407,6 +508,12 @@
 				},
 				"transferFrom(address,address,uint256)": {
 					"details": "See {IERC20-transferFrom}. Emits an {Approval} event indicating the updated allowance. This is not required by the EIP. See the note at the beginning of {ERC20}. NOTE: Does not update the allowance if the current allowance is the maximum `uint256`. Requirements: - `from` and `to` cannot be the zero address. - `from` must have a balance of at least `amount`. - the caller must have allowance for ``from``'s tokens of at least `amount`."
+				},
+				"withdraw(uint256)": {
+					"details": "Withdraw WETH by burning vault shares.",
+					"params": {
+						"shares": "The number of vault shares to redeem."
+					}
 				}
 			},
 			"title": "WETH ERC-4626 Vault",
@@ -435,11 +542,11 @@
 	},
 	"sources": {
 		"fund_shares.sol": {
-			"keccak256": "0xf1cd56f70beef4cdbfa27ef65e6ce45dde7e36e0956a3cb693fbccb2e82d42ba",
+			"keccak256": "0x3b02e40e8e27ebec7e70adc233004ed24bd95cf81487195deabbea6d325058d9",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://dad3a831a5968b02980ec8a8e8bb2ed38264e35fc46fec6d78d937db0b84de41",
-				"dweb:/ipfs/QmWo2YdBF3w8CbUMyTztNLnmXXCS7weYJN8JuY1D163FXu"
+				"bzz-raw://1c26e8463b6f4a8f2a460d85dc72c73a31a67f4de9750c3343878fd6fd265b79",
+				"dweb:/ipfs/QmR7AgMrfLiWB1Q38WMvfXWLM3XC2A5ZM68zBGLYBynuah"
 			]
 		},
 		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.3/contracts/security/ReentrancyGuard.sol": {
