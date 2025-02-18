@@ -89,7 +89,7 @@ contract WETHVault is ERC20, ReentrancyGuard {
      */
     function pricePerShare() external view returns (uint256) {
         uint256 supply = totalSupply();
-        return supply == 0 ? 1e18 : (portfolioValue * 1e18) / supply;
+        return supply == 0 ? 1e18 : portfolioValue / supply;
     }
 
     /**
