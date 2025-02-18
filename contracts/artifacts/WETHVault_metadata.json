@@ -597,7 +597,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"fund_accounting.sol": "WETHVault"
+			"contracts/fund_accounting.sol": "WETHVault"
 		},
 		"evmVersion": "cancun",
 		"libraries": {},
@@ -611,7 +611,7 @@
 		"remappings": []
 	},
 	"sources": {
-		"fund_accounting.sol": {
+		"contracts/fund_accounting.sol": {
 			"keccak256": "0x090f802873b79868dbdff62e0aaaf1043d2e96f9648c8dd35c56fd2c203631ca",
 			"license": "MIT",
 			"urls": [

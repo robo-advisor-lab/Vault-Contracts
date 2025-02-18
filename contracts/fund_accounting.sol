@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.1;
 
-// Import OpenZeppelin dependencies using a specific version
+// Import OpenZeppelin dependencies
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.3/contracts/token/ERC20/ERC20.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.3/contracts/token/ERC20/utils/SafeERC20.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.3/contracts/security/ReentrancyGuard.sol";
 
 /**
- * @title WETH ERC-4626 Vault
- * @dev This contract allows users to deposit WETH, mint proportional fund shares,
- *      and send WETH to a designated fund portfolio while relying on an external
- *      portfolio value update for tracking share value.
+ * @title WETH ERC-4626 Vault with Whitelist
+ * @dev This contract allows only whitelisted users to deposit WETH and mint fund shares.
  */
 contract WETHVault is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable weth;
     address public immutable fundPortfolio;
-    mapping(address => bool) public admins; // Admins who can update portfolio value
-    uint256 public portfolioValue; // Total fund value tracked externally
+    mapping(address => bool) public admins; // Admins who can manage portfolio and whitelist
+    mapping(address => bool) public whitelist; // Whitelist system
+
+    uint256 public portfolioValue; // External portfolio value tracking
 
     event WithdrawalRequest(address indexed user, uint256 amount);
+    event Whitelisted(address indexed user, bool status);
 
     constructor(
         address _weth,
@@ -33,7 +34,7 @@ contract WETHVault is ERC20, ReentrancyGuard {
         
         weth = IERC20(_weth);
         fundPortfolio = _fundPortfolio;
-        admins[msg.sender] = true; // Contract deployer is an admin by default
+        admins[msg.sender] = true; // Deployer is an admin
     }
 
     /**
@@ -46,22 +47,23 @@ contract WETHVault is ERC20, ReentrancyGuard {
     }
 
     /**
-     * @dev Deposit WETH, mint proportional shares, and send WETH to the fund portfolio.
+     * @dev Deposit WETH and mint proportional shares.
      * @param amount The amount of WETH to deposit.
      */
     function deposit(uint256 amount) external nonReentrant {
+        require(whitelist[msg.sender], "Not whitelisted"); // ✅ Whitelist check
         require(amount > 0, "Amount must be greater than zero");
-        
+
         // Transfer WETH from user to this contract
         weth.safeTransferFrom(msg.sender, address(this), amount);
-        
+
         // Forward WETH to fund portfolio (EOA account)
         weth.safeTransfer(fundPortfolio, amount);
-        
+
         // Calculate shares to mint based on total portfolio value
         uint256 supply = totalSupply();
         uint256 shares = (supply == 0 || portfolioValue == 0) ? amount : (amount * supply) / portfolioValue;
-        
+
         _mint(msg.sender, shares);
     }
 
@@ -83,11 +85,29 @@ contract WETHVault is ERC20, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the value of a single share based on fundPortfolio's total valuation.
+     * @dev Returns the value of a single share based on the fund's total valuation.
      */
     function pricePerShare() external view returns (uint256) {
         uint256 supply = totalSupply();
         return supply == 0 ? 1e18 : (portfolioValue * 1e18) / supply;
+    }
+
+    /**
+     * @dev Adds an address to the whitelist.
+     */
+    function addToWhitelist(address user) external {
+        require(admins[msg.sender], "Not an admin");
+        whitelist[user] = true;
+        emit Whitelisted(user, true);
+    }
+
+    /**
+     * @dev Removes an address from the whitelist.
+     */
+    function removeFromWhitelist(address user) external {
+        require(admins[msg.sender], "Not an admin");
+        whitelist[user] = false;
+        emit Whitelisted(user, false);
     }
 
     /**
